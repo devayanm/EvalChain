@@ -9,6 +9,9 @@ import {
   Col,
   Spinner,
   Card,
+  Pagination,
+  ButtonGroup,
+  Button,
 } from "react-bootstrap";
 import api from "../services/api";
 
@@ -17,7 +20,13 @@ function Dashboard() {
   const [filteredEvaluations, setFilteredEvaluations] = useState([]);
   const [error, setError] = useState(null);
   const [search, setSearch] = useState("");
+  const [statusFilter, setStatusFilter] = useState("All");
+  const [sortField, setSortField] = useState("title");
+  const [sortOrder, setSortOrder] = useState("asc");
   const [loading, setLoading] = useState(true);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   const { token } = useSelector((state) => state.auth);
 
   useEffect(() => {
@@ -28,7 +37,7 @@ function Dashboard() {
         setEvaluations(response.data);
         setFilteredEvaluations(response.data);
       } catch (err) {
-        setError("Could not fetch evaluations");
+        setError("Could not fetch evaluations. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -37,12 +46,36 @@ function Dashboard() {
   }, [token]);
 
   useEffect(() => {
-    setFilteredEvaluations(
-      evaluations.filter((evaluate) =>
-        evaluate.title.toLowerCase().includes(search.toLowerCase())
+    const filtered = evaluations
+      .filter(
+        (evaluate) =>
+          evaluate.title.toLowerCase().includes(search.toLowerCase()) &&
+          (statusFilter === "All" || evaluate.status === statusFilter)
       )
-    );
-  }, [search, evaluations]);
+      .sort((a, b) => {
+        const valueA = a[sortField];
+        const valueB = b[sortField];
+        if (sortField === "createdAt") {
+          return sortOrder === "asc"
+            ? new Date(valueA) - new Date(valueB)
+            : new Date(valueB) - new Date(valueA);
+        }
+        return sortOrder === "asc"
+          ? valueA.localeCompare(valueB)
+          : valueB.localeCompare(valueA);
+      });
+    setFilteredEvaluations(filtered);
+    setCurrentPage(1);
+  }, [search, statusFilter, evaluations, sortField, sortOrder]);
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredEvaluations.slice(
+    indexOfFirstItem,
+    indexOfLastItem
+  );
+
+  const handlePageChange = (pageNumber) => setCurrentPage(pageNumber);
 
   return (
     <Container className="mt-4">
@@ -57,13 +90,46 @@ function Dashboard() {
       {!loading && (
         <>
           <Row className="mb-3">
-            <Col>
+            <Col md={6}>
               <Form.Control
                 type="text"
                 placeholder="Search evaluations"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
               />
+            </Col>
+            <Col md={4}>
+              <Form.Select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="All">All Statuses</option>
+                <option value="Approved">Approved</option>
+                <option value="Pending">Pending</option>
+                <option value="Rejected">Rejected</option>
+              </Form.Select>
+            </Col>
+            <Col md={2}>
+              <ButtonGroup>
+                <Button
+                  variant="outline-primary"
+                  onClick={() => {
+                    setSortField("title");
+                    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                  }}
+                >
+                  Sort by Title
+                </Button>
+                <Button
+                  variant="outline-primary"
+                  onClick={() => {
+                    setSortField("createdAt");
+                    setSortOrder(sortOrder === "asc" ? "desc" : "asc");
+                  }}
+                >
+                  Sort by Date
+                </Button>
+              </ButtonGroup>
             </Col>
           </Row>
 
@@ -79,8 +145,8 @@ function Dashboard() {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredEvaluations.length > 0 ? (
-                    filteredEvaluations.map((evaluate, idx) => (
+                  {currentItems.length > 0 ? (
+                    currentItems.map((evaluate, idx) => (
                       <tr key={idx}>
                         <td>{evaluate.title}</td>
                         <td>{evaluate.description}</td>
@@ -92,7 +158,9 @@ function Dashboard() {
                             className={`badge ${
                               evaluate.status === "Approved"
                                 ? "bg-success"
-                                : "bg-warning"
+                                : evaluate.status === "Pending"
+                                ? "bg-warning"
+                                : "bg-danger"
                             }`}
                           >
                             {evaluate.status}
@@ -111,6 +179,22 @@ function Dashboard() {
               </Table>
             </Card.Body>
           </Card>
+
+          <div className="d-flex justify-content-center mt-3">
+            <Pagination>
+              {[
+                ...Array(Math.ceil(filteredEvaluations.length / itemsPerPage)),
+              ].map((_, index) => (
+                <Pagination.Item
+                  key={index + 1}
+                  active={index + 1 === currentPage}
+                  onClick={() => handlePageChange(index + 1)}
+                >
+                  {index + 1}
+                </Pagination.Item>
+              ))}
+            </Pagination>
+          </div>
         </>
       )}
     </Container>

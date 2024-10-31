@@ -6,6 +6,7 @@ import LandingPage from "./pages/LandingPage.js";
 import Home from "./pages/Home";
 import Dashboard from "./pages/Dashboard";
 import Profile from "./pages/Profile";
+import Settings from "./pages/Settings.js";
 import Auth from "./pages/Auth.js";
 import ProtectedRoute from "./components/ProtectedRoute";
 
@@ -18,6 +19,7 @@ function App() {
         <Route path="/home" element={<Home />} />
         <Route path="/auth" element={<Auth />} />
         <Route path="/profile" element={<Profile />} />
+        <Route path="/settings" element={<Settings />} />
         <Route path="/dashboard" element={<Dashboard />} />
         <Route
           path="/dashboard"
